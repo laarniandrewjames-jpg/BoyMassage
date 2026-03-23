@@ -59,7 +59,7 @@ export function Header() {
       <div className="container flex h-16 items-center justify-between px-4">
         <Link href="/" className="flex items-center gap-2">
           <Leaf className="h-6 w-6 text-primary" />
-          <span className="font-semibold text-lg">Serenity Touch</span>
+          <span className="font-semibold text-lg">King's Massage</span>
         </Link>
 
         {/* Desktop Navigation */}
