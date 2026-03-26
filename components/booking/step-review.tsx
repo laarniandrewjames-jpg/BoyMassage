@@ -1,23 +1,27 @@
 'use client'
 
 import { useBookingStore } from '@/lib/booking-store'
-import { supabase } from '@/lib/supabase/client' // Import Supabase client
+// ✅ Fixed: Import createClient instead of supabase instance
+import { createClient } from '@/lib/supabase/client' 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Clock, User, CheckCircle, AlertCircle } from 'lucide-react'
-import { useState } from 'react' // Added for modal state
+import { useState } from 'react' 
 
 export function StepReview() {
   const { formData, resetForm } = useBookingStore()
   const { calculateTotalDuration } = useBookingStore()
   const totalDuration = calculateTotalDuration()
 
+  // ✅ Create Supabase client instance when component loads
+  const supabase = createClient()
+
   // State to control custom modal
   const [showModal, setShowModal] = useState(false)
   const [modalText, setModalText] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
 
-  // Calculate pricing (adjust base prices as needed)
+  // Calculate pricing (all services now have same base price)
   const BASE_SERVICE_PRICES = {
     Swedish: 600,
     Shiatsu: 600,
@@ -55,7 +59,7 @@ export function StepReview() {
           service: formData.service,
           duration: formData.duration,
           extra_minutes: formData.extraMinutes,
-          add_ons: addOnsData, // JSONB format
+          add_ons: addOnsData, 
           total_price: totalPrice,
           date: formData.date,
           time: formData.time,
@@ -71,9 +75,9 @@ export function StepReview() {
       setModalText('Booking submitted successfully! We’ll contact you shortly.')
       setIsSuccess(true)
       setShowModal(true)
-      resetForm() // Reset form after success
+      resetForm() 
     } catch (err: any) {
-      console.error('Submission Error:', err) // Log to debug
+      console.error('Submission Error:', err) 
       setModalText(`Booking failed: ${err.message || 'Please try again later'}`)
       setIsSuccess(false)
       setShowModal(true)
@@ -201,7 +205,7 @@ export function StepReview() {
         </Button>
       </div>
 
-      {/* CUSTOM BUILT-IN MODAL - No Libraries Needed */}
+      {/* Custom Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full shadow-xl">
