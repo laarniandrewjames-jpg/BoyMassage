@@ -1,7 +1,7 @@
 'use client'
 
 import { useBookingStore } from '@/lib/booking-store'
-import { supabase } from '@/lib/supabase' // Import Supabase client
+import { supabase } from '@/lib/supabase/client' // Import Supabase client
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Calendar, Clock, User, CheckCircle, AlertCircle } from 'lucide-react'
