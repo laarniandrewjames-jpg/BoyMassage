@@ -61,10 +61,10 @@ const REVIEWS = [
     review: 'Amazing experience! John is a true professional. The Swedish massage was exactly what I needed. Highly recommended!',
   },
   {
-    name: 'Carlos Reyes',
+    name: 'Sir G',
     rating: 5,
     massage: 'Thai Massage',
-    review: 'Best massage I\'ve ever had. The flexibility and energy I gained from the Thai massage is incredible. Will book again!',
+    review: 'Hello. Thank you pala kagabe nwla ang sakit ng likod ko. Legit yung masahe mo bawat hagod snisigurado mo na ok sa client mo . Nrelax ako super as in . Nawala yung sakit ng likod at balakang ko.Ang gling ng masahe mo nkahanap nko ng mggng regular therapist ko .na legit tlaga yung massage .Till next time ulit .',
   },
   {
     name: 'Angela Fernandez',
