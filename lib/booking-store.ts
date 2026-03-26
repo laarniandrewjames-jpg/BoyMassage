@@ -20,6 +20,11 @@ const initialFormData: BookingFormData = {
   time: '',
   duration: 60,
   extraMinutes: 0,
+  // NEW SPECIAL REQUEST FIELDS ADDED HERE
+  pressurePreference: 'no-preference',
+  focusArea: 'full-body',
+  additionalNeeds: 'none',
+  specialRequests: '',
 }
 
 export const useBookingStore = create<BookingStore>((set) => ({
