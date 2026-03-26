@@ -14,16 +14,16 @@ import { Label } from '@/components/ui/label'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { FcGoogle } from 'react-icons/fc' // Import Google icon
+import { FcGoogle } from 'react-icons/fc'
 
 export default function Page() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [isGoogleLoading, setIsGoogleLoading] = useState(false) // Separate loading state for Google
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false)
   const router = useRouter()
-  const supabase = createClient() // Initialize once
+  const supabase = createClient()
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -35,8 +35,9 @@ export default function Page() {
         email,
         password,
         options: {
+          // Use dedicated login env var for clarity
           emailRedirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL ||
             `${window.location.origin}/book`,
         },
       })
@@ -57,8 +58,9 @@ export default function Page() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
+          // Match login redirect target
           redirectTo:
-            process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL ||
+            process.env.NEXT_PUBLIC_LOGIN_REDIRECT_URL ||
             `${window.location.origin}/book`,
         },
       })
@@ -77,9 +79,7 @@ export default function Page() {
           <Card>
             <CardHeader>
               <CardTitle className="text-2xl">Login</CardTitle>
-              <CardDescription>
-                Enter your email below to login to your account
-              </CardDescription>
+              <CardDescription>Enter your credentials to access your account</CardDescription>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleLogin}>
@@ -109,35 +109,28 @@ export default function Page() {
                   <Button type="submit" className="w-full" disabled={isLoading}>
                     {isLoading ? 'Logging in...' : 'Login'}
                   </Button>
-
-                  {/* Divider line */}
                   <div className="flex items-center gap-2 py-2">
                     <div className="flex-1 h-px bg-gray-200"></div>
                     <span className="text-sm text-gray-500">Or continue with</span>
                     <div className="flex-1 h-px bg-gray-200"></div>
                   </div>
-
-                  {/* Google Login Button */}
                   <Button
                     type="button"
+                    className="w-full bg-white border border-gray-300 text-gray-800 hover:bg-gray-50"
                     onClick={handleGoogleLogin}
-                    className="w-full bg-white text-gray-800 border border-gray-300 hover:bg-gray-50 transition-colors"
                     disabled={isGoogleLoading}
                   >
                     <FcGoogle className="mr-2 h-5 w-5" />
                     {isGoogleLoading ? 'Processing...' : 'Continue with Google'}
                   </Button>
                 </div>
-                <div className="mt-4 text-center text-sm">
-                  Don&apos;t have an account?{' '}
-                  <Link
-                    href="/auth/sign-up"
-                    className="underline underline-offset-4"
-                  >
-                    Sign up
-                  </Link>
-                </div>
               </form>
+              <div className="mt-4 text-center text-sm">
+                Don't have an account?{' '}
+                <Link href="/auth/sign-up" className="text-primary underline">
+                  Sign up here
+                </Link>
+              </div>
             </CardContent>
           </Card>
         </div>
