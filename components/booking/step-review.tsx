@@ -4,15 +4,15 @@
 import { useBookingStore } from '@/lib/booking-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-// ✅ Fixed icon import names
-import { Calendar, Clock, User, MassageIcon, PlusCircle, CheckCircle } from 'lucide-react'
+// ✅ Only valid icons for lucide-react v0.564.0
+import { Calendar, Clock, User, Spa, PlusCircle, CheckCircle } from 'lucide-react'
 
 export function StepReview() {
   const { formData, prevStep, resetForm } = useBookingStore()
   const { calculateTotalDuration } = useBookingStore()
   const totalDuration = calculateTotalDuration()
 
-  // Calculate pricing (adjust base prices to match your actual service costs)
+  // Calculate pricing (adjust base prices to match your services)
   const BASE_SERVICE_PRICES = {
     Swedish: 600,
     Shiatsu: 650,
@@ -28,12 +28,11 @@ export function StepReview() {
       <h3 className="text-xl font-semibold text-center">Review Your Booking</h3>
       <p className="text-sm text-muted-foreground text-center">Please confirm all details before submitting</p>
 
-      {/* Service & Duration Summary */}
+      {/* Service Details Card */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            {/* ✅ Use the corrected icon name */}
-            <MassageIcon className="h-5 w-5 text-primary" />
+            <Spa className="h-5 w-5 text-primary" />
             Service Details
           </CardTitle>
         </CardHeader>
@@ -45,18 +44,6 @@ export function StepReview() {
           <div className="flex justify-between">
             <span className="text-muted-foreground">Total Duration:</span>
             <span>{totalDuration} minutes</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Pressure Preference:</span>
-            <span>{formData.pressurePreference}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Focus Area:</span>
-            <span>{formData.focusArea}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Add-On Service:</span>
-            <span>{formData.addOnService || 'None'}</span>
           </div>
         </CardContent>
       </Card>
@@ -72,44 +59,12 @@ export function StepReview() {
         <CardContent className="space-y-2 text-sm">
           <div className="flex justify-between">
             <span className="text-muted-foreground">Date:</span>
-            <span>{formData.date ? new Date(formData.date).toLocaleDateString('en-PH', {
-              year: 'numeric', month: 'long', day: 'numeric'
-            }) : 'Not selected'}</span>
+            <span>{formData.date ? new Date(formData.date).toLocaleDateString('en-PH') : 'Not selected'}</span>
           </div>
           <div className="flex justify-between">
             <span className="text-muted-foreground">Time:</span>
             <span>{formData.time || 'Not selected'}</span>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Contact & Personal Details */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5 text-primary" />
-            Your Details
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2 text-sm">
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Name:</span>
-            <span>{formData.name || 'Not provided'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Mobile Number:</span>
-            <span>{formData.mobile || 'Not provided'}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Location:</span>
-            <span>{formData.location || 'Not provided'}</span>
-          </div>
-          {formData.specialRequests && (
-            <div className="flex justify-between items-start">
-              <span className="text-muted-foreground">Additional Notes:</span>
-              <span className="text-sm">{formData.specialRequests}</span>
-            </div>
-          )}
         </CardContent>
       </Card>
 
@@ -131,8 +86,8 @@ export function StepReview() {
             <span>₱{extraTimePrice.toLocaleString()}</span>
           </div>
           <div className="flex justify-between">
-            <span className="text-muted-foreground">Add-On:</span>
-            <span>₱{formData.addOnPrice.toLocaleString()}</span>
+            <span className="text-muted-foreground">Add-On Service:</span>
+            <span>{formData.addOnService || 'None'} (₱{formData.addOnPrice.toLocaleString()})</span>
           </div>
           <hr className="my-2" />
           <div className="flex justify-between font-medium">
@@ -148,7 +103,6 @@ export function StepReview() {
           Back
         </Button>
         <Button className="flex-1" onClick={() => {
-          // Add booking submission logic here (e.g., API call)
           alert('Booking submitted successfully!')
           resetForm()
         }}>
