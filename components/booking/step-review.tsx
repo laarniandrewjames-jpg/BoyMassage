@@ -1,7 +1,6 @@
 'use client'
 
 import { useBookingStore } from '@/lib/booking-store'
-// ✅ Fixed: Import createClient instead of supabase instance
 import { createClient } from '@/lib/supabase/client' 
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -13,7 +12,6 @@ export function StepReview() {
   const { calculateTotalDuration } = useBookingStore()
   const totalDuration = calculateTotalDuration()
 
-  // ✅ Create Supabase client instance when component loads
   const supabase = createClient()
 
   // State to control custom modal
@@ -21,7 +19,7 @@ export function StepReview() {
   const [modalText, setModalText] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
 
-  // Calculate pricing (all services now have same base price)
+  // Calculate pricing
   const BASE_SERVICE_PRICES = {
     Swedish: 600,
     Shiatsu: 600,
@@ -36,7 +34,17 @@ export function StepReview() {
   // Handle booking submission to Supabase
   const handleSubmit = async () => {
     try {
-      // Validate required fields
+      // 1. Get current authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        setModalText('Authentication error: Please ensure you are logged in to book.')
+        setIsSuccess(false)
+        setShowModal(true)
+        return
+      }
+
+      // 2. Validate required fields
       if (!formData.name || !formData.mobile || !formData.date || !formData.time) {
         setModalText('Please complete all required fields: Name, Mobile, Date, and Time')
         setIsSuccess(false)
@@ -44,15 +52,16 @@ export function StepReview() {
         return
       }
 
-      // Prepare add-ons data for Supabase JSONB column
+      // Prepare add-ons data
       const addOnsData = formData.addOnService !== 'None' 
         ? [{ name: formData.addOnService, price: formData.addOnPrice, duration_minutes: 15 }]
         : []
 
-      // Insert booking into Supabase
+      // 3. Insert booking into Supabase (Now includes user_id)
       const { error } = await supabase
         .from('bookings')
         .insert({
+          user_id: user.id, // ✅ This fixes the "null value violates not-null constraint" error
           name: formData.name,
           mobile: formData.mobile,
           location: formData.location,
@@ -84,7 +93,6 @@ export function StepReview() {
     }
   }
 
-  // Close modal function
   const closeModal = () => {
     setShowModal(false)
   }
