@@ -1,8 +1,8 @@
 export type ServiceType = 'Swedish' | 'Shiatsu' | 'Thai' | 'Combination'
-export type BookingStatus = 'pending' | 'approved' | 'rejected'
+export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'completed' // Added "completed" for full workflow
 export type UserRole = 'admin' | 'client'
 
-// New types for special request options
+// Special request option types (unchanged but formatted for consistency)
 export type PressurePreference = 'no-preference' | 'light' | 'medium' | 'firm'
 export type FocusArea = 'full-body' | 'back-shoulders' | 'legs-feet' | 'neck-upper-back' | 'other'
 export type AdditionalNeeds = 'none' | 'oil-allergy' | 'table-assistance' | 'quiet-session' | 'aromatherapy' | 'other'
@@ -25,7 +25,10 @@ export interface Booking {
   time: string
   duration: number
   extra_minutes: number
-  // New fields to store preferences in bookings
+  // --- NEW EARNINGS FIELDS ---
+  earnings?: number // Manual input amount (required for approval/completion)
+  earnings_notes?: string // Optional notes for earnings calculation
+  // ---------------------------
   pressure_preference: PressurePreference
   focus_area: FocusArea
   additional_needs: AdditionalNeeds
@@ -52,7 +55,6 @@ export interface BookingFormData {
   time: string
   duration: number
   extraMinutes: number
-  // New special request fields added here
   pressurePreference: PressurePreference
   focusArea: FocusArea
   additionalNeeds: AdditionalNeeds
@@ -64,6 +66,7 @@ export interface TimeSlot {
   available: boolean
 }
 
+// --- Updated with consistent formatting ---
 export const SERVICES: { value: ServiceType; label: string; description: string }[] = [
   { value: 'Swedish', label: 'Swedish Massage', description: 'Gentle, relaxing strokes for stress relief' },
   { value: 'Shiatsu', label: 'Shiatsu', description: 'Japanese finger pressure therapy' },
@@ -73,12 +76,11 @@ export const SERVICES: { value: ServiceType; label: string; description: string 
 
 export const DURATIONS = [
   { value: 60, label: '60 minutes' },
-  { value: 90, label: '90 minutes' },
-  { value: 120, label: '120 minutes' },
 ]
 
 export const EXTRA_MINUTES = [
   { value: 0, label: 'No extra time' },
   { value: 15, label: '+15 minutes' },
   { value: 30, label: '+30 minutes' },
+  { value: 60, label: '+60 minutes' },
 ]
