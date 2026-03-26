@@ -1,7 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
-// ✅ Export as "proxy" (matches Next.js 16+ naming convention)
 export async function proxy(request: NextRequest) {
   let supabaseResponse = NextResponse.next({ request })
 
@@ -12,15 +11,25 @@ export async function proxy(request: NextRequest) {
 
   const supabase = createServerClient(url, key, {
     cookies: {
-      getAll() { return request.cookies.getAll() },
-      setAll(cookiesToSet) {
-        cookiesToSet.forEach(({ name, value, options }) => 
-          supabaseResponse.cookies.set(name, value, options)
-        )
+      getAll: () => request.cookies.getAll(),
+      setAll: (cookiesToSet) => {
+        cookiesToSet.forEach(({ name, value, options }) => {
+          supabaseResponse.cookies.set(name, value, {
+            ...options,
+            path: '/',
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+          })
+        })
       },
     },
   })
 
+  // ✅ Refresh session AND check for PKCE verifier
   await supabase.auth.getUser()
   return supabaseResponse
+}
+
+export const config = {
+  matcher: '/((?!_next/static|_next/image|favicon.ico).*)',
 }
