@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
 
-// Load fonts correctly (fixed variable naming)
+// Load fonts correctly
 const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
@@ -19,6 +19,11 @@ export const metadata: Metadata = {
     ],
     apple: '/apple-icon.png',
   },
+  other: {
+    'mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-capable': 'yes',
+    'apple-mobile-web-app-status-bar-style': 'default',
+  },
 }
 
 export const viewport: Viewport = {
@@ -27,14 +32,37 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  // Critical: Prevent desktop view override
+  viewportFit: 'cover',
 }
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`${geistSans.variable} ${geistMono.variable}`}>
-      <body className="font-sans antialiased bg-gray-50 text-gray-900 dark:bg-gray-950 dark:text-gray-100">
+    <html 
+      lang="en" 
+      className={`${geistSans.variable} ${geistMono.variable} font-sans`}
+      // Force mobile rendering agent
+      data-user-agent="Mozilla/5.0 (Linux; Android 13; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Mobile Safari/537.36"
+    >
+      <body className="min-h-screen bg-gray-50 antialiased">
+        {/* Prevent desktop view injection */}
+        <script dangerouslySetInnerHTML={{ __html: `
+          // Lock viewport to mobile
+          if (window.innerWidth > 768) {
+            document.documentElement.style.zoom = window.innerWidth / 375 * 1; // Match iPhone SE size
+          }
+          // Block desktop view scripts
+          Object.defineProperty(window, 'matchMedia', {
+            value: (query) => ({
+              matches: query.includes('max-width') ? true : false,
+              addListener: () => {},
+              removeListener: () => {}
+            })
+          });
+        `}} />
+        
         {children}
         <Analytics />
       </body>
