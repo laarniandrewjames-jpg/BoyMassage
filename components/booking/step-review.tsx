@@ -4,7 +4,8 @@
 import { useBookingStore } from '@/lib/booking-store'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Calendar, Clock, User, Massage, PlusCircle, CheckCircle } from 'lucide-react'
+// ✅ Fixed icon import names
+import { Calendar, Clock, User, MassageIcon, PlusCircle, CheckCircle } from 'lucide-react'
 
 export function StepReview() {
   const { formData, prevStep, resetForm } = useBookingStore()
@@ -31,7 +32,8 @@ export function StepReview() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-lg">
-            <Massage className="h-5 w-5 text-primary" />
+            {/* ✅ Use the corrected icon name */}
+            <MassageIcon className="h-5 w-5 text-primary" />
             Service Details
           </CardTitle>
         </CardHeader>
