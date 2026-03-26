@@ -8,7 +8,7 @@ const geistSans = Geist({ subsets: ['latin'], variable: '--font-geist-sans' })
 const geistMono = Geist_Mono({ subsets: ['latin'], variable: '--font-geist-mono' })
 
 export const metadata: Metadata = {
-  title: 'Serenity Touch | Massage Therapy Booking',
+  title: 'Kings Massage Therapy Booking',
   description: 'Book your personalized massage therapy session with our expert freelance therapist. Swedish, Shiatsu, Thai, and combination treatments available.',
   generator: 'Next.js',
   icons: {
