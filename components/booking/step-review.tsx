@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Separator } from '@/components/ui/separator'
 import { Spinner } from '@/components/ui/spinner'
 import { format } from 'date-fns'
-import { Sparkles, CalendarDays, Clock, User, Phone, MapPin, Check, MessageSquare, Flame, Droplets, Wind, Lungs } from 'lucide-react'
+// Updated imports: Replace Lungs with Ear (valid lucide-react icon)
+import { Sparkles, CalendarDays, Clock, User, Phone, MapPin, Check, MessageSquare, Flame, Droplets, Wind, Ear } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 // Helper to map values to friendly labels
@@ -46,10 +47,10 @@ const getFriendlyLabel = (type: string, value: string) => {
   }
 }
 
-// Get service-specific icon
+// Get service-specific icon (updated with valid Ear icon)
 const getServiceIcon = (service: string | undefined) => {
   switch(service) {
-    case 'Ear Candling': return <Lungs className="w-5 h-5 text-primary mt-0.5" />
+    case 'Ear Candling': return <Ear className="w-5 h-5 text-primary mt-0.5" /> // Replaced Lungs with Ear
     case 'Hot Stone': return <Droplets className="w-5 h-5 text-primary mt-0.5" />
     case 'Ventusa': return <Wind className="w-5 h-5 text-primary mt-0.5" />
     case 'Fire Massage': return <Flame className="w-5 h-5 text-primary mt-0.5" />
@@ -79,7 +80,6 @@ export function StepReview() {
         return
       }
 
-      // Updated with all service types supported
       const { error: bookingError } = await supabase.from('bookings').insert({
         user_id: user.id,
         name: formData.name,
@@ -119,7 +119,7 @@ export function StepReview() {
         </CardHeader>
         <CardContent className="p-0">
           <div className="divide-y">
-            {/* Treatment Section with Service-Specific Icon */}
+            {/* Treatment Section with Valid Service-Specific Icon */}
             <div className="flex items-start gap-4 p-4">
               {getServiceIcon(formData.service)}
               <div>
