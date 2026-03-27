@@ -143,8 +143,8 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
       
       <main className="flex-1 py-8 px-4">
         <div className="container mx-auto max-w-6xl">
-          {/* Dashboard Stats Header */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          {/* Dashboard Stats Header - ✅ FIXED: Changed from md:grid-cols-4 to md:grid-cols-2 for 2x2 layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
             {/* Pending Bookings */}
             <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
               <CardContent className="p-5">
