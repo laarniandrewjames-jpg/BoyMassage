@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { 
-  Plus, X, Loader2, Calendar, Clock, User, CheckCircle2 
+  Plus, X, Loader2, Calendar, Clock, User 
 } from 'lucide-react'
 
 const ADD_ON_OPTIONS = [
@@ -28,12 +28,11 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
   useEffect(() => {
     const initialInputs: Record<string, number> = {}
     bookings.forEach(b => { 
-      initialInputs[b.id] = b.total_price || b.earnings || 0 
+      initialInputs[b.id] = b.earnings || b.total_price || 0 
     })
     setEarningsInputs(initialInputs)
   }, [bookings])
 
-  // --- ADD ADD-ON LOGIC ---
   const addExtraService = async (booking: any, addOn: typeof ADD_ON_OPTIONS[0]) => {
     setUpdatingId(booking.id)
     const currentAddOns = Array.isArray(booking.add_ons) ? booking.add_ons : []
@@ -49,7 +48,28 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
     const { error } = await supabase.from('bookings').update({ 
       add_ons: updatedAddOns, 
       total_price: newTotal, 
-      duration: newDuration 
+      duration: newDuration,
+      earnings: newTotal // Keep earnings in sync with total
+    }).eq('id', booking.id)
+
+    if (!error) router.refresh()
+    setUpdatingId(null)
+  }
+
+  const removeAddOn = async (booking: any, indexToRemove: number) => {
+    setUpdatingId(booking.id)
+    const currentAddOns = [...booking.add_ons]
+    const removedItem = currentAddOns[indexToRemove]
+    currentAddOns.splice(indexToRemove, 1)
+
+    const newTotal = Math.max(0, (earningsInputs[booking.id] || 0) - (removedItem.price || 0))
+    const newDuration = Math.max(60, (booking.duration || 60) - (removedItem.duration_minutes || 0))
+
+    const { error } = await supabase.from('bookings').update({
+      add_ons: currentAddOns,
+      total_price: newTotal,
+      duration: newDuration,
+      earnings: newTotal
     }).eq('id', booking.id)
 
     if (!error) router.refresh()
@@ -63,8 +83,7 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
       .eq('id', id)
     
     if (error) {
-        console.error("Complete Error:", error.message)
-        alert("Database error: " + error.message)
+        alert("Error: " + error.message)
     } else {
         router.refresh()
     }
@@ -98,7 +117,7 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
               </div>
               <div className="space-y-1 border-l pl-4">
                 <span className="text-[10px] font-bold text-slate-400 uppercase">Time</span>
-                <div className="flex items-center text-sm font-semibold">
+                <div className="flex items-center text-sm font-semibold text-slate-700">
                   <Clock className="h-4 w-4 mr-2 text-emerald-500" />
                   {booking.time} ({booking.duration || 60}m)
                 </div>
@@ -108,13 +127,19 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
             {/* ADD-ONS AREA */}
             <div className="p-4 bg-white space-y-3">
               <span className="text-[10px] font-bold text-slate-400 uppercase">Services & Add-ons</span>
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-wrap gap-1.5 min-h-[24px]">
                 {(!booking.add_ons || booking.add_ons.length === 0) ? (
-                  <span className="text-xs text-slate-400 italic">No extra services</span>
+                  <Badge variant="outline" className="text-slate-400 border-dashed">None</Badge>
                 ) : (
                   booking.add_ons.map((ao: any, i: number) => (
-                    <Badge key={i} variant="outline" className="bg-slate-50 text-slate-600 border-slate-200">
+                    <Badge key={i} variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-100 pr-1 gap-1">
                       {ao.name}
+                      <button 
+                        onClick={() => removeAddOn(booking, i)}
+                        className="hover:bg-emerald-200 rounded-full p-0.5 transition-colors"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
                     </Badge>
                   ))
                 )}
@@ -123,15 +148,14 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
               {booking.status !== 'completed' && (
                 <div className="flex flex-wrap gap-1 mt-2">
                   {ADD_ON_OPTIONS.map(opt => (
-                    <Button 
+                    <button 
                       key={opt.name} 
-                      variant="ghost" 
-                      className="h-7 px-2 text-[10px] border border-dashed rounded-md hover:bg-emerald-50"
                       onClick={() => addExtraService(booking, opt)}
                       disabled={updatingId === booking.id}
+                      className="text-[10px] px-2 py-1 rounded border border-slate-200 hover:bg-slate-50 text-slate-500 disabled:opacity-50"
                     >
                       + {opt.name}
-                    </Button>
+                    </button>
                   ))}
                 </div>
               )}
@@ -139,7 +163,7 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
 
             <div className="p-4 bg-slate-50 border-t flex items-center justify-between gap-4">
               <div className="flex flex-col">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Total PHP</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase">Total PHP</span>
                 <div className="flex items-center">
                   <span className="text-emerald-600 font-bold mr-1">₱</span>
                   <Input 
@@ -153,11 +177,11 @@ export function BookingsTable({ bookings }: { bookings: any[] }) {
 
               {booking.status === 'approved' && (
                 <Button 
-                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl shadow-lg shadow-emerald-100"
+                  className="flex-1 h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold rounded-xl"
                   onClick={() => completeBooking(booking.id)}
                   disabled={updatingId === booking.id}
                 >
-                  {updatingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete Session'}
+                  {updatingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete'}
                 </Button>
               )}
             </div>
