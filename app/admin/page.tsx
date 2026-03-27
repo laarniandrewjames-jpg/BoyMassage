@@ -17,18 +17,20 @@ export default async function AdminPage() {
     redirect('/auth/login?redirect=/admin')
   }
 
-  // 2. Verify Admin Role (Security check)
-  const { data: userData } = await supabase
-    .from('profiles') // Check if your table is 'profiles' or 'users'
+  // 2. FIXED: Changed 'profiles' to 'users'
+  const { data: userData, error: roleError } = await supabase
+    .from('users') 
     .select('role')
     .eq('id', user.id)
     .single()
 
-  if (userData?.role !== 'admin') {
+  // If there is an error or the user isn't an admin, we redirect
+  if (roleError || userData?.role !== 'admin') {
+    console.error('Admin check failed:', roleError?.message)
     redirect('/')
   }
 
-  // 3. Fetch Bookings with all specialized service fields
+  // 3. Fetch Bookings
   const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
     .select(`
@@ -59,9 +61,9 @@ export default async function AdminPage() {
     console.error('❌ Database Fetch Error:', bookingError.message)
   }
 
-  // 4. Fetch Client list (Filtering only clients)
+  // 4. FIXED: Changed 'profiles' to 'users'
   const { data: users } = await supabase
-    .from('profiles') // Ensure this matches your user/profile table name
+    .from('users')
     .select('*')
     .eq('role', 'client')
     .order('created_at', { ascending: false })
@@ -69,7 +71,6 @@ export default async function AdminPage() {
   return (
     <main className="min-h-screen bg-slate-50/50">
       <Suspense fallback={<AdminLoading />}>
-        {/* This component will now receive the real data from Supabase */}
         <AdminDashboard 
           initialBookings={bookings || []} 
           initialUsers={users || []} 
