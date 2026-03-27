@@ -1,206 +1,259 @@
 'use client'
 
-import React, { useState, useMemo } from 'react'
-import { Booking } from '@/lib/types'
+import React, { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { createClient } from '@/lib/supabase/client'
+import { Header } from '@/components/header'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { BookingsTable } from './bookings-table'
+import { ClientsList } from './clients-list'
+import type { Booking, User } from '@/lib/types'
+import { Calendar, Users, LayoutDashboard, Search, Filter, Download, Bell, DollarSign, Flame } from 'lucide-react'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
-import { User, Info, Clock, PlusCircle } from 'lucide-react'
-import { calculateTotalPrice } from '@/lib/pricing'
 
-const ADD_ON_OPTIONS = [
-  { name: 'Ear Candling', price: 150 },
-  { name: 'Ventusa', price: 150 },
-  { name: 'Hot Stone', price: 150 },
-  { name: 'Fire Massage', price: 150 }
-]
-
-const EXTEND_OPTIONS = [15, 30, 45]
-
-interface AdminBookingCardProps {
-  booking: Booking
-  onApprove: (id: string) => void
-  onReject: (id: string) => void
-  onComplete: (id: string) => void 
+interface AdminDashboardProps {
+  bookings: (Booking & { users: { email: string } })[]
+  users: User[]
 }
 
-export function AdminBookingCard({ booking, onApprove, onReject, onComplete }: AdminBookingCardProps) {
-  const status = booking.status?.toLowerCase()
-  const [localBooking, setLocalBooking] = useState({
-    ...booking,
-    add_ons: booking.add_ons || [],
-    extra_minutes: 0
-  })
+// Format Philippine Pesos currency
+const formatPHP = (amount: number) => {
+  return new Intl.NumberFormat('en-PH', {
+    style: 'currency',
+    currency: 'PHP',
+    minimumFractionDigits: 0
+  }).format(amount)
+}
 
-  // ✅ Auto-calculate total price whenever extra_minutes or add_ons change
-  const calculatedTotal = useMemo(() => {
-    return calculateTotalPrice(
-      booking.total_price || 600,
-      localBooking.extra_minutes,
-      localBooking.add_ons.length
+// Get current month for earnings calculation
+const getCurrentMonthRange = () => {
+  const now = new Date()
+  const start = new Date(now.getFullYear(), now.getMonth(), 1)
+  const end = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+  return { 
+    start, 
+    end,
+    label: `${now.toLocaleDateString('en-PH', { month: 'long' })} ${now.getFullYear()}`
+  }
+}
+
+export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
+  const [activeTab, setActiveTab] = useState('bookings')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [bookingFilter, setBookingFilter] = useState('all')
+
+  const [localBookings, setLocalBookings] = useState(bookings)
+
+  const router = useRouter()
+  const supabase = createClient()
+
+  // 🔑 Optimistic Handlers
+  async function handleApprove(id: string) {
+    setLocalBookings(prev =>
+      prev.map(b => b.id === id ? { ...b, status: 'approved' } : b)
     )
-  }, [localBooking.extra_minutes, localBooking.add_ons, booking.total_price])
-
-  const handleExtendTime = (minutes: number) => {
-    setLocalBooking(prev => ({
-      ...prev,
-      extra_minutes: prev.extra_minutes + minutes,
-      total_price: calculatedTotal // Will be recalculated by useMemo
-    }))
+    try {
+      await supabase.from('bookings').update({ status: 'approved' }).eq('id', id)
+    } catch (err) {
+      console.error('Approve failed:', err)
+    }
+    router.refresh()
   }
 
-  const handleAddService = (service: { name: string, price: number }) => {
-    setLocalBooking(prev => ({
-      ...prev,
-      add_ons: [...prev.add_ons, service]
-      // total_price will auto-update via useMemo
-    }))
+  async function handleReject(id: string) {
+    setLocalBookings(prev =>
+      prev.map(b => b.id === id ? { ...b, status: 'cancelled' } : b)
+    )
+    try {
+      await supabase.from('bookings').update({ status: 'cancelled' }).eq('id', id)
+    } catch (err) {
+      console.error('Reject failed:', err)
+    }
+    router.refresh()
+  }
+
+  // ✅ FIXED: Save to extra_minutes field instead of duration
+  async function handleComplete(id: string, earnings: number, bookingData?: any) {
+    const bookingToUpdate = localBookings.find(b => b.id === id)
+    
+    setLocalBookings(prev =>
+      prev.map(b => b.id === id ? { 
+        ...b, 
+        status: 'completed', 
+        earnings,
+        add_ons: bookingData?.add_ons || b.add_ons || [],
+        extra_minutes: bookingData?.extra_minutes || 0,
+        total_price: bookingData?.total_price || b.total_price
+      } : b)
+    )
+    
+    try {
+      // ✅ Key fix: Save to extra_minutes, NOT duration
+      await supabase.from('bookings').update({ 
+        status: 'completed', 
+        earnings,
+        add_ons: bookingData?.add_ons || bookingToUpdate?.add_ons || [],
+        extra_minutes: bookingData?.extra_minutes || 0, // ✅ Save to extra_minutes
+        total_price: bookingData?.total_price || bookingToUpdate?.total_price
+      }).eq('id', id)
+      
+      router.refresh()
+    } catch (err) {
+      console.error('Complete failed:', err)
+    }
+  }
+
+  // Stats
+  const pendingCount = localBookings.filter((b) => b.status === 'pending').length
+  const approvedCount = localBookings.filter((b) => b.status === 'approved').length
+  const completedCount = localBookings.filter((b) => b.status === 'completed').length
+  const totalClients = users.length
+  
+  const { label: monthLabel, start: monthStart, end: monthEnd } = getCurrentMonthRange()
+  const monthlyEarnings = localBookings
+    .filter(b => b.status === 'completed' && new Date(b.created_at) >= monthStart && new Date(b.created_at) <= monthEnd)
+    .reduce((sum, b) => sum + (b.earnings || 0), 0)
+
+  // Filters
+  const filteredBookings = localBookings.filter(booking => {
+    const searchLower = searchQuery.toLowerCase().trim()
+    return searchLower === '' || 
+           booking.name.toLowerCase().includes(searchLower) ||
+           booking.service.toLowerCase().includes(searchLower) ||
+           booking.users.email.toLowerCase().includes(searchLower)
+  }).filter(booking => bookingFilter === 'all' || booking.status === bookingFilter)
+
+  const filteredUsers = users.filter(user => {
+    const searchLower = searchQuery.toLowerCase().trim()
+    return searchLower === '' || 
+           user.email.toLowerCase().includes(searchLower) ||
+           user.id.includes(searchLower)
+  })
+
+  const handleFilterClick = (filter: string) => {
+    setBookingFilter(filter)
   }
 
   return (
-    <div className="w-full max-w-3xl bg-white rounded-3xl shadow-sm border border-slate-100 mb-3">
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4">
-        <div className="flex items-center gap-4 min-w-0">
-          <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center shrink-0">
-            <User className="h-6 w-6 text-emerald-500" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <h3 className="font-bold text-slate-900 text-lg leading-tight">
-              {localBooking.service} ({localBooking.duration + localBooking.extra_minutes}m)
-            </h3>
-            <p className="text-[11px] text-slate-400 font-bold uppercase tracking-tight">
-              {localBooking.name} • {localBooking.date}
-            </p>
-          </div>
-        </div>
-        <Badge className={cn(
-          "px-3 py-1 rounded-xl text-[10px] font-bold uppercase border-none",
-          status === 'pending' && "bg-amber-100 text-amber-600",
-          status === 'approved' && "bg-emerald-100 text-emerald-600",
-          status === 'completed' && "bg-blue-100 text-blue-600"
-        )}>
-          {status}
-        </Badge>
-      </div>
-
-      {/* Expanded details */}
-      <div className="px-5 pb-5 space-y-4">
-        {/* Services */}
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Info className="h-4 w-4 text-emerald-500" />
-            <span className="text-[10px] font-bold text-slate-400 uppercase">Active Services</span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Badge className="bg-slate-50 text-slate-700 rounded-full px-3 py-1 text-xs font-bold shadow-sm">
-              {localBooking.service} ({localBooking.duration + localBooking.extra_minutes}m)
-            </Badge>
-            {localBooking.add_ons.map((ao, i) => (
-              <Badge key={i} className="bg-emerald-50 text-emerald-700 rounded-full px-3 py-1 text-xs font-bold shadow-sm">
-                {ao.name} (+₱{ao.price})
-              </Badge>
-            ))}
-          </div>
-        </div>
-
-        {/* Admin Actions */}
-        {status === 'approved' && (
-          <div className="bg-slate-50 rounded-2xl p-4 border border-dashed border-slate-200 space-y-3">
-            <p className="text-xs font-black text-slate-600">Admin Actions</p>
-            <div className="flex flex-col gap-3">
-              {/* Extend Time Dropdown */}
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-slate-500" />
-                <select
-                  className="border rounded-2xl px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-emerald-50 transition-all duration-200"
-                  onChange={(e) => {
-                    const val = parseInt(e.target.value)
-                    if (val) handleExtendTime(val)
-                    e.target.value = '' // Reset dropdown
-                  }}
-                >
-                  <option value="">Extend Time</option>
-                  {EXTEND_OPTIONS.map(opt => (
-                    <option key={opt} value={opt}>+{opt}m (₱{opt === 15 ? 150 : opt === 30 ? 250 : 350})</option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Add Service Dropdown */}
-              <div className="flex items-center gap-2">
-                <PlusCircle className="w-4 h-4 text-slate-500" />
-                <select
-                  className="border rounded-2xl px-4 py-2 text-sm font-bold text-slate-700 shadow-sm hover:bg-emerald-50 transition-all duration-200"
-                  onChange={(e) => {
-                    const service = ADD_ON_OPTIONS.find(s => s.name === e.target.value)
-                    if (service) handleAddService(service)
-                    e.target.value = '' // Reset dropdown
-                  }}
-                >
-                  <option value="">Add Service</option>
-                  {ADD_ON_OPTIONS.map((opt, i) => (
-                    <option key={i} value={opt.name}>{opt.name} (+₱{opt.price})</option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            {/* Price Breakdown */}
-            <div className="bg-white rounded-xl p-3 text-xs space-y-1 border border-slate-100">
-              <div className="flex justify-between text-slate-600">
-                <span>Base ({localBooking.duration}min):</span>
-                <span className="font-bold">₱{booking.total_price || 600}</span>
-              </div>
-              {localBooking.extra_minutes > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Extra Time (+{localBooking.extra_minutes}min):</span>
-                  <span className="font-bold">₱{calculateTotalPrice(booking.total_price || 600, localBooking.extra_minutes, 0) - (booking.total_price || 600)}</span>
+    <div className="min-h-screen flex flex-col bg-background">
+      <Header />
+      
+      <main className="flex-1 py-8 px-4">
+        <div className="container mx-auto max-w-6xl">
+          {/* Dashboard Stats Header */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {/* Pending Bookings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{pendingCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-amber-600" />
+                  </div>
                 </div>
-              )}
-              {localBooking.add_ons.length > 0 && (
-                <div className="flex justify-between text-emerald-600">
-                  <span>Add-ons ({localBooking.add_ons.length}):</span>
-                  <span className="font-bold">₱{localBooking.add_ons.length * 150}</span>
+              </CardContent>
+            </Card>
+
+            {/* Approved Bookings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{approvedCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-emerald-600" />
+                  </div>
                 </div>
-              )}
-            </div>
+              </CardContent>
+            </Card>
+
+            {/* Completed Sessions */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{completedCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Earnings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{monthLabel}</p>
+                    <p className="text-xl font-bold text-slate-900 mt-1">{formatPHP(monthlyEarnings)}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
-        )}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-          <span className="text-[10px] font-bold text-slate-400 uppercase">Total Earnings</span>
-          <span className="text-2xl font-black text-emerald-600">₱{calculatedTotal}</span>
-        </div>
+          {/* Main Content Tabs */}
+          <Tabs defaultValue="bookings" value={activeTab} onValueChange={setActiveTab} className="mb-8">
+            <TabsList className="grid w-full md:w-auto grid-cols-2 mb-6">
+              <TabsTrigger value="bookings" className="flex items-center gap-2">
+                <Calendar className="h-4 w-4" />
+                Bookings
+                {pendingCount > 0 && (
+                  <Badge className="ml-2 bg-amber-100 text-amber-700">
+                    {pendingCount}
+                  </Badge>
+                )}
+              </TabsTrigger>
+              <TabsTrigger value="clients" className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Clients
+                <Badge className="ml-2 bg-blue-100 text-blue-700">
+                  {totalClients}
+                </Badge>
+              </TabsTrigger>
+            </TabsList>
 
-        {/* Action buttons */}
-        <div className="flex items-center gap-4 pt-3">
-          {status === 'pending' && (
-            <>
-              <button 
-                onClick={() => onReject(localBooking.id)}
-                className="text-red-500 font-bold text-sm px-2 active:opacity-50 transition-opacity"
-              >
-                Reject
-              </button>
-              <button 
-                onClick={() => onApprove(localBooking.id)}
-                className="bg-slate-900 text-white rounded-2xl h-12 px-10 font-bold text-xs shadow-md active:scale-95 transition-transform"
-              >
-                Approve
-              </button>
-            </>
-          )}
-          {status === 'approved' && (
-            <button 
-              onClick={() => onComplete(localBooking.id)}
-              className="bg-emerald-600 text-white rounded-2xl h-12 px-10 font-bold text-xs shadow-md active:scale-95 transition-transform"
-            >
-              Finish Session (₱{calculatedTotal})
-            </button>
-          )}
+            {/* Bookings Tab Content */}
+            <TabsContent value="bookings" className="space-y-4">
+              <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
+                <h3 className="text-lg font-semibold">Bookings {bookingFilter !== 'all' ? `(${bookingFilter})` : ''}</h3>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('all')} className={bookingFilter === 'all' ? 'bg-slate-100' : ''}>All</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('pending')} className={bookingFilter === 'pending' ? 'bg-amber-100' : ''}>Pending</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('approved')} className={bookingFilter === 'approved' ? 'bg-emerald-100' : ''}>Approved</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('completed')} className={bookingFilter === 'completed' ? 'bg-blue-100' : ''}>Completed</Button>
+                </div>
+              </div>
+              <BookingsTable
+                bookings={filteredBookings}
+                onApprove={handleApprove}
+                onReject={handleReject}
+                onComplete={handleComplete}
+              />
+            </TabsContent>
+
+            {/* Clients Tab Content */}
+            <TabsContent value="clients">
+              <h3 className="text-lg font-semibold mb-4">Registered Clients ({totalClients})</h3>
+              <ClientsList users={filteredUsers} bookings={localBookings} />
+            </TabsContent>
+          </Tabs>
         </div>
-      </div>
+      </main>
     </div>
   )
 }
