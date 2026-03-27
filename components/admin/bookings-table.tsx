@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { format, parseISO } from 'date-fns'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -8,6 +8,7 @@ import {
   User, ChevronDown, ChevronUp, Info, Clock as TimerIcon 
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { calculateTotalPrice } from '@/lib/pricing'
 
 const ADD_ON_OPTIONS = [
   { name: 'Ear Candling', price: 150 },
@@ -37,6 +38,12 @@ export function BookingsTable({
   const [earningsInputs, setEarningsInputs] = useState<Record<string, number>>({})
   const [selectedExtend, setSelectedExtend] = useState<Record<string, string>>({})
   const [selectedAddOn, setSelectedAddOn] = useState<Record<string, string>>({})
+  
+  // Track extra minutes and add-ons per booking
+  const [bookingModifications, setBookingModifications] = useState<Record<string, {
+    extra_minutes: number
+    added_ons: any[]
+  }>>({})
 
   useEffect(() => {
     const initialInputs: Record<string, number> = {}
@@ -51,6 +58,51 @@ export function BookingsTable({
       {bookings.map(booking => {
         const isExpanded = expandedId === booking.id
         const status = (booking.status || 'pending').toLowerCase()
+        
+        // Get modifications for this booking
+        const modifications = bookingModifications[booking.id] || {
+          extra_minutes: 0,
+          added_ons: []
+        }
+        
+        // All add-ons (original + newly added)
+        const allAddOns = [...(booking.add_ons || []), ...modifications.added_ons]
+        
+        // ✅ Auto-calculate total price
+        const calculatedTotal = useMemo(() => {
+          return calculateTotalPrice(
+            booking.total_price || 600,
+            modifications.extra_minutes,
+            modifications.added_ons.length
+          )
+        }, [modifications.extra_minutes, modifications.added_ons, booking.total_price])
+
+        const handleExtendTime = (minutes: number) => {
+          setBookingModifications(prev => ({
+            ...prev,
+            [booking.id]: {
+              ...prev[booking.id],
+              extra_minutes: (prev[booking.id]?.extra_minutes || 0) + minutes
+            }
+          }))
+          setSelectedExtend(prev => ({ ...prev, [booking.id]: '' }))
+        }
+
+        const handleAddService = (service: { name: string, price: number }) => {
+          setBookingModifications(prev => ({
+            ...prev,
+            [booking.id]: {
+              ...prev[booking.id],
+              added_ons: [...(prev[booking.id]?.added_ons || []), service]
+            }
+          }))
+          setSelectedAddOn(prev => ({ ...prev, [booking.id]: '' }))
+        }
+
+        // Calculate breakdown values
+        const basePrice = booking.total_price || 600
+        const extraTimePrice = calculatedTotal - basePrice - (modifications.added_ons.length * 150)
+        const addOnsPrice = modifications.added_ons.length * 150
 
         return (
           <div
@@ -67,7 +119,6 @@ export function BookingsTable({
                   <User className="h-5 w-5 text-emerald-500" />
                 </div>
                 <div className="min-w-0">
-                  {/* Reduced from text-xl to text-base */}
                   <h3 className="font-bold text-slate-900 text-base leading-tight truncate">
                     {booking.service}
                   </h3>
@@ -117,9 +168,9 @@ export function BookingsTable({
                   </div>
                   <div className="flex flex-wrap gap-1.5 p-3 bg-slate-50/50 rounded-2xl">
                     <Badge className="bg-white text-slate-700 border-none font-bold text-[10px] px-3 py-1.5 rounded-xl shadow-sm">
-                      {booking.service} ({booking.duration}m)
+                      {booking.service} ({booking.duration + modifications.extra_minutes}m)
                     </Badge>
-                    {booking.add_ons?.map((ao: any, i: number) => (
+                    {allAddOns?.map((ao: any, i: number) => (
                       <Badge key={i} className="bg-white text-emerald-600 border-none font-bold text-[10px] px-3 py-1.5 rounded-xl shadow-sm">
                         {ao.name} (+₱{ao.price})
                       </Badge>
@@ -131,33 +182,60 @@ export function BookingsTable({
                 {status === 'approved' && (
                   <div className="grid grid-cols-2 gap-2">
                     <select
-                      className="bg-slate-50 border-none ring-1 ring-slate-100 rounded-xl px-3 py-2 text-[10px] font-bold text-slate-600 appearance-none focus:ring-emerald-500"
+                      className="bg-slate-50 border-none ring-1 ring-slate-100 rounded-xl px-3 py-2 text-[10px] font-bold text-slate-600 appearance-none focus:ring-emerald-500 cursor-pointer hover:bg-slate-100"
                       value={selectedExtend[booking.id] ?? ''}
                       onChange={(e) => {
                         const val = e.target.value
-                        setSelectedExtend(prev => ({ ...prev, [booking.id]: val }))
                         const minutes = val ? parseInt(val, 10) : 0
-                        if (minutes && onExtendTime) onExtendTime(booking.id, minutes)
+                        if (minutes) handleExtendTime(minutes)
                       }}
                     >
                       <option value="">Extend Time</option>
-                      <option value="15">+15m</option>
-                      <option value="30">+30m</option>
+                      <option value="15">+15m (₱150)</option>
+                      <option value="30">+30m (₱250)</option>
+                      <option value="45">+45m (₱350)</option>
                     </select>
                     <select
-                      className="bg-slate-50 border-none ring-1 ring-slate-100 rounded-xl px-3 py-2 text-[10px] font-bold text-slate-600 appearance-none focus:ring-emerald-500"
+                      className="bg-slate-50 border-none ring-1 ring-slate-100 rounded-xl px-3 py-2 text-[10px] font-bold text-slate-600 appearance-none focus:ring-emerald-500 cursor-pointer hover:bg-slate-100"
                       value={selectedAddOn[booking.id] ?? ''}
                       onChange={(e) => {
                         const val = e.target.value
-                        setSelectedAddOn(prev => ({ ...prev, [booking.id]: val }))
-                        if (val && onAddService) onAddService(booking.id, val)
+                        const service = ADD_ON_OPTIONS.find(s => s.name === val)
+                        if (service) handleAddService(service)
                       }}
                     >
                       <option value="">Add Service</option>
                       {ADD_ON_OPTIONS.map((opt, i) => (
-                        <option key={i} value={opt.name}>{opt.name}</option>
+                        <option key={i} value={opt.name}>{opt.name} (+₱{opt.price})</option>
                       ))}
                     </select>
+                  </div>
+                )}
+
+                {/* Price Breakdown */}
+                {status === 'approved' && (modifications.extra_minutes > 0 || modifications.added_ons.length > 0) && (
+                  <div className="bg-emerald-50 rounded-xl p-3 text-xs space-y-1.5 border border-emerald-100">
+                    <p className="font-bold text-emerald-900">Price Breakdown</p>
+                    <div className="flex justify-between text-slate-600">
+                      <span>Base ({booking.duration}min):</span>
+                      <span className="font-bold">₱{basePrice}</span>
+                    </div>
+                    {modifications.extra_minutes > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Extra Time (+{modifications.extra_minutes}min):</span>
+                        <span className="font-bold">₱{extraTimePrice}</span>
+                      </div>
+                    )}
+                    {modifications.added_ons.length > 0 && (
+                      <div className="flex justify-between text-emerald-700">
+                        <span>Add-ons ({modifications.added_ons.length} × ₱150):</span>
+                        <span className="font-bold">₱{addOnsPrice}</span>
+                      </div>
+                    )}
+                    <div className="pt-1.5 border-t border-emerald-200 flex justify-between font-bold text-emerald-900">
+                      <span>Total:</span>
+                      <span>₱{calculatedTotal}</span>
+                    </div>
                   </div>
                 )}
 
@@ -167,12 +245,9 @@ export function BookingsTable({
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Earnings</span>
                     <div className="flex items-center gap-0.5">
                       <span className="text-emerald-600 font-bold text-sm">₱</span>
-                      <Input
-                        type="number"
-                        className="w-16 h-8 font-extrabold text-lg border-none bg-transparent p-0 focus-visible:ring-0 text-slate-900"
-                        value={earningsInputs[booking.id] ?? ''}
-                        onChange={(e) => setEarningsInputs({ ...earningsInputs, [booking.id]: Number(e.target.value) })}
-                      />
+                      <span className="text-xl font-extrabold text-slate-900 min-w-12">
+                        {calculatedTotal}
+                      </span>
                     </div>
                   </div>
 
@@ -181,7 +256,7 @@ export function BookingsTable({
                       <>
                         <button
                           type="button"
-                          className="text-red-500 font-bold text-[11px] px-2"
+                          className="text-red-500 font-bold text-[11px] px-2 active:opacity-50 transition-opacity"
                           onClick={(e) => { e.stopPropagation(); onReject(booking.id); }}
                         >
                           Reject
@@ -200,8 +275,8 @@ export function BookingsTable({
                         type="button"
                         className="bg-emerald-600 text-white rounded-xl h-11 px-8 font-bold text-xs shadow-md active:scale-95 transition-transform"
                         onClick={(e) => {
-                          const finalEarnings = earningsInputs[booking.id] ?? 0
-                          onComplete(booking.id, finalEarnings)
+                          e.stopPropagation()
+                          onComplete(booking.id, calculatedTotal)
                         }}
                       >
                         Finish Session
