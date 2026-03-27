@@ -1,7 +1,7 @@
 // app/(admin)/page.tsx
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { AdminDashboard } from '@/components/admin/admin-dashboard'
+import AdminDashboard from '@/components/admin/admin-dashboard'
 import { Suspense } from 'react'
 
 export const metadata = {
@@ -12,12 +12,7 @@ export const metadata = {
 export default async function AdminPage() {
   const supabase = await createClient()
 
-  // 1. Verify authentication
-  const {
-    data: userGetData,
-    error: userGetError,
-  } = await supabase.auth.getUser()
-
+  const { data: userGetData, error: userGetError } = await supabase.auth.getUser()
   const user = userGetData?.user ?? null
 
   if (userGetError) {
@@ -25,11 +20,9 @@ export default async function AdminPage() {
   }
 
   if (!user) {
-    // Not authenticated — redirect to login with return path
     redirect('/auth/login?redirect=/admin')
   }
 
-  // 2. Get role from users table (defensive)
   const { data: userData, error: roleError } = await supabase
     .from('users')
     .select('role')
@@ -38,16 +31,32 @@ export default async function AdminPage() {
 
   if (roleError) {
     console.error('Error fetching user role:', roleError.message)
-    // If we can't verify role, be conservative and redirect
+   User()
+  const user = userGetData?.user ?? null
+
+  if (userGetError) {
+    console.error('Supabase auth.getUser error:', userGetError.message)
+  }
+
+  if (!user) {
+    redirect('/auth/login?redirect=/admin')
+  }
+
+  const { data: userData, error: roleError } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  if (roleError) {
+    console.error('Error fetching user role:', roleError.message)
     redirect('/')
   }
 
   if (userData?.role !== 'admin') {
-    console.warn('Unauthorized access attempt by user:', user.id)
     redirect('/')
   }
 
-  // 3. Fetch bookings (defensive)
   const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
     .select(`
@@ -78,7 +87,6 @@ export default async function AdminPage() {
     console.error('Database fetch error (bookings):', bookingError.message)
   }
 
-  // 4. Fetch client users
   const { data: users, error: usersError } = await supabase
     .from('users')
     .select('*')
@@ -89,14 +97,10 @@ export default async function AdminPage() {
     console.error('Database fetch error (users):', usersError.message)
   }
 
-  // Provide safe defaults to the dashboard
-  const safeBookings = bookings ?? []
-  const safeUsers = users ?? []
-
   return (
-    <main className="min-h-screen bg-slate-50/50">
+    <main className="min-h-screen bg-slate-50/50 p-6">
       <Suspense fallback={<AdminLoading />}>
-        <AdminDashboard initialBookings={safeBookings} initialUsers={safeUsers} />
+        <AdminDashboard initialBookings={bookings ?? []} initialUsers={users ?? []} />
       </Suspense>
     </main>
   )
