@@ -8,8 +8,10 @@ export const metadata = {
   description: 'Manage professional massage bookings and client requests.',
 }
 
-// Ensure the page doesn't cache old data
+// CRITICAL: This ensures that every time you click "Approve" and the page 
+// refreshes, it gets the absolute latest data from Supabase.
 export const revalidate = 0;
+export const dynamic = 'force-dynamic';
 
 export default async function AdminPage() {
   const supabase = await createClient()
@@ -27,23 +29,23 @@ export default async function AdminPage() {
     .eq('id', user.id)
     .single()
 
-  // Safety check: if user doesn't exist in 'users' table or isn't admin
   if (!userData || userData.role !== 'admin') {
     redirect('/')
   }
 
   // 3. Fetch Bookings 
-  // Added a check to ensure we get all the data needed for the tiles
+  // We fetch everything (*) to make sure the BookingsTable has all 
+  // the fields like 'pressure_preference' and 'add_ons'
   const { data: bookings, error: bookingError } = await supabase
     .from('bookings')
-    .select('*') // Using * is safer for debugging during development
+    .select('*')
     .order('created_at', { ascending: false })
 
   if (bookingError) {
     console.error('❌ Database Fetch Error:', bookingError.message)
   }
 
-  // 4. Fetch Client list (Matched to your screenshot showing 3 clients)
+  // 4. Fetch Client list (Matched to your Clients tab)
   const { data: users, error: userError } = await supabase
     .from('users')
     .select('*')
@@ -55,9 +57,9 @@ export default async function AdminPage() {
   }
 
   return (
-    <main className="min-h-screen bg-slate-50/50">
+    // Clean slate-50 background to make your white tiles "pop"
+    <main className="min-h-screen bg-slate-50">
       <Suspense fallback={<AdminLoading />}>
-        {/* We pass the initial data here */}
         <AdminDashboard 
           initialBookings={bookings || []} 
           initialUsers={users || []} 
@@ -70,9 +72,10 @@ export default async function AdminPage() {
 function AdminLoading() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+      {/* Matching your emerald-500 brand color */}
       <div className="w-12 h-12 border-4 border-slate-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
       <p className="text-slate-400 font-bold animate-pulse text-[10px] uppercase tracking-[0.2em]">
-        Refreshing Dashboard...
+        Loading King's Massage...
       </p>
     </div>
   )
