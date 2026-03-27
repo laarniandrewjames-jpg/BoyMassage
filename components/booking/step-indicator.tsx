@@ -10,46 +10,51 @@ interface StepIndicatorProps {
 
 export function StepIndicator({ currentStep, steps }: StepIndicatorProps) {
   return (
-    <div className="flex items-center justify-between w-full max-w-md mx-auto mb-8">
+    // Added px-2 to prevent edges from hitting the screen and reduced mb-6 for tighter vertical space
+    <div className="flex items-center justify-between w-full max-w-lg mx-auto mb-6 px-2">
       {steps.map((step, index) => (
-        <div key={step.number} className="flex items-center flex-1">
-          <div className="flex flex-col items-center">
+        <React.Fragment key={step.number}>
+          <div className="flex flex-col items-center z-10">
             <div
               className={cn(
-                'w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all duration-300',
+                'w-8 h-8 md:w-10 md:h-10 rounded-full flex items-center justify-center text-xs md:text-sm font-bold transition-all duration-500',
                 currentStep > step.number
-                  ? 'bg-primary text-primary-foreground'
+                  ? 'bg-emerald-600 text-white' // Matches your King's Massage branding
                   : currentStep === step.number
-                  ? 'bg-primary text-primary-foreground ring-4 ring-primary/20'
-                  : 'bg-muted text-muted-foreground'
+                  ? 'bg-emerald-600 text-white ring-4 ring-emerald-100'
+                  : 'bg-slate-100 text-slate-400'
               )}
             >
               {currentStep > step.number ? (
-                <Check className="w-5 h-5" />
+                <Check className="w-4 h-4 md:w-5 md:h-5" />
               ) : (
                 step.number
               )}
             </div>
             <span
               className={cn(
-                'mt-2 text-xs font-medium text-center',
+                'mt-2 text-[10px] md:text-xs font-bold text-center whitespace-nowrap',
                 currentStep >= step.number
-                  ? 'text-foreground'
-                  : 'text-muted-foreground'
+                  ? 'text-slate-800'
+                  : 'text-slate-400'
               )}
             >
               {step.label}
             </span>
           </div>
+          
+          {/* Connector Line */}
           {index < steps.length - 1 && (
-            <div
-              className={cn(
-                'flex-1 h-0.5 mx-2 transition-all duration-300',
-                currentStep > step.number ? 'bg-primary' : 'bg-muted'
-              )}
-            />
+            <div className="flex-1 px-1 -mt-5 md:-mt-6"> 
+              <div
+                className={cn(
+                  'h-0.5 w-full transition-all duration-700 ease-in-out',
+                  currentStep > step.number ? 'bg-emerald-600' : 'bg-slate-100'
+                )}
+              />
+            </div>
           )}
-        </div>
+        </React.Fragment>
       ))}
     </div>
   )
