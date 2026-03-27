@@ -21,7 +21,7 @@ interface BookingsTableProps {
   bookings: any[]
   onApprove: (id: string) => void
   onReject: (id: string) => void
-  onComplete: (id: string, finalEarnings: number) => void
+  onComplete: (id: string, finalEarnings: number, bookingData?: any) => void
   onExtendTime?: (id: string, minutes: number) => void
   onAddService?: (id: string, service: string) => void
 }
@@ -276,7 +276,12 @@ export function BookingsTable({
                         className="bg-emerald-600 text-white rounded-xl h-11 px-8 font-bold text-xs shadow-md active:scale-95 transition-transform"
                         onClick={(e) => {
                           e.stopPropagation()
-                          onComplete(booking.id, calculatedTotal)
+                          // ✅ Pass booking data with all modifications
+                          onComplete(booking.id, calculatedTotal, {
+                            add_ons: allAddOns,
+                            duration: booking.duration + modifications.extra_minutes,
+                            total_price: calculatedTotal
+                          })
                         }}
                       >
                         Finish Session
