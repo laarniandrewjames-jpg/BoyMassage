@@ -15,9 +15,8 @@ import { Label } from '@/components/ui/label'
 import { 
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter 
 } from '@/components/ui/dialog'
-import { DollarSign, Plus, X, Loader2, MessageCircle } from 'lucide-react'
+import { Plus, X, Loader2 } from 'lucide-react'
 
-// Configuration for Admin Quick-Add services
 const ADD_ON_OPTIONS = [
   { name: 'Ear Candling', price: 150, duration: 15 },
   { name: 'Ventusa', price: 200, duration: 15 },
@@ -35,23 +34,17 @@ const getStatusBadge = (status: string) => {
   }
 }
 
-interface BookingsTableProps {
-  bookings: (Booking & { users: { email: string } })[]
-}
-
-export function BookingsTable({ bookings }: BookingsTableProps) {
+export function BookingsTable({ bookings }: { bookings: any[] }) {
   const router = useRouter()
   const supabase = createClient()
   
   const [earningsInputs, setEarningsInputs] = useState<Record<string, number>>({})
   const [updatingId, setUpdatingId] = useState<string | null>(null)
   
-  // Dialog States
   const [showAddService, setShowAddService] = useState(false)
   const [newService, setNewService] = useState({ name: '', defaultEarnings: 0, description: '' })
   const [isAddingService, setIsAddingService] = useState(false)
 
-  // Initialize prices based on current database state
   useEffect(() => {
     const initialInputs: Record<string, number> = {}
     bookings.forEach(b => {
@@ -60,7 +53,6 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
     setEarningsInputs(initialInputs)
   }, [bookings])
 
-  // --- ADD EXTRA SERVICE ---
   const addExtraService = async (booking: any, addOn: typeof ADD_ON_OPTIONS[0]) => {
     setUpdatingId(booking.id)
     try {
@@ -76,24 +68,18 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
       const { error } = await supabase
         .from('bookings')
-        .update({ 
-          add_ons: updatedAddOns,
-          total_price: newTotal,
-          duration: newDuration
-        })
+        .update({ add_ons: updatedAddOns, total_price: newTotal, duration: newDuration })
         .eq('id', booking.id)
 
       if (error) throw error
       router.refresh()
     } catch (err) {
       console.error(err)
-      alert("Error adding service")
     } finally {
       setUpdatingId(null)
     }
   }
 
-  // --- DELETE ADD-ON ---
   const deleteAddOn = async (booking: any, indexToDelete: number) => {
     setUpdatingId(booking.id)
     try {
@@ -117,7 +103,6 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
       router.refresh()
     } catch (err) {
       console.error(err)
-      alert("Error removing service")
     } finally {
       setUpdatingId(null)
     }
@@ -125,22 +110,12 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
 
   const completeBooking = async (id: string) => {
     setUpdatingId(id)
-    try {
-      const { error } = await supabase
-        .from('bookings')
-        .update({
-          status: 'completed',
-          earnings: earningsInputs[id] // Finalize with current input amount
-        })
-        .eq('id', id)
-
-      if (error) throw error
-      router.refresh()
-    } catch (err) {
-      alert("Error completing booking")
-    } finally {
-      setUpdatingId(null)
-    }
+    const { error } = await supabase
+      .from('bookings')
+      .update({ status: 'completed', earnings: earningsInputs[id] })
+      .eq('id', id)
+    if (!error) router.refresh()
+    setUpdatingId(null)
   }
 
   const updateStatus = async (id: string, status: 'approved' | 'rejected') => {
@@ -148,6 +123,20 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
     const { error } = await supabase.from('bookings').update({ status }).eq('id', id)
     if (!error) router.refresh()
     setUpdatingId(null)
+  }
+
+  const handleAddNewService = async () => {
+    if (!newService.name || newService.defaultEarnings <= 0) return
+    setIsAddingService(true)
+    const { error } = await supabase.from('services').insert([
+      { name: newService.name, price: newService.defaultEarnings, description: newService.description }
+    ])
+    if (!error) {
+      setShowAddService(false)
+      setNewService({ name: '', defaultEarnings: 0, description: '' })
+      router.refresh()
+    }
+    setIsAddingService(false)
   }
 
   return (
@@ -164,100 +153,87 @@ export function BookingsTable({ bookings }: BookingsTableProps) {
             <TableRow className="bg-muted/50">
               <TableHead className="font-bold">Client & Service</TableHead>
               <TableHead className="font-bold">Schedule</TableHead>
-              <TableHead className="font-bold">Add-ons (Quick Add)</TableHead>
-              <TableHead className="font-bold">Total (PHP)</TableHead>
+              <TableHead className="font-bold">Add-ons</TableHead>
               <TableHead className="font-bold text-right">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {bookings.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center py-10 text-muted-foreground">No bookings found</TableCell></TableRow>
-            ) : (
-              bookings.map(booking => (
-                <TableRow key={booking.id} className="hover:bg-muted/10 transition-colors">
-                  <TableCell>
-                    <div className="font-bold text-md">{booking.service}</div>
-                    <div className="text-xs text-muted-foreground">{booking.name} • {booking.duration || 60} mins</div>
-                  </TableCell>
-                  
-                  <TableCell>
-                    <div className="text-sm font-medium">
-                      {booking.date ? format(parseISO(`${booking.date}T00:00:00`), 'MMM dd, yyyy') : 'N/A'}
-                    </div>
-                    <div className="text-xs text-muted-foreground">{booking.time}</div>
-                  </TableCell>
-
-                  <TableCell className="max-w-[280px]">
-                    <div className="flex flex-wrap gap-1 mb-2">
-                      {booking.add_ons?.map((ao: any, i: number) => (
-                        <Badge key={i} variant="secondary" className="pl-2 pr-1 py-0.5 flex items-center gap-1 group">
-                          {ao.name}
-                          <button onClick={() => deleteAddOn(booking, i)} className="hover:text-red-500 rounded-full transition-colors">
-                            <X className="h-3 w-3" />
-                          </button>
-                        </Badge>
-                      ))}
-                    </div>
-                    {booking.status !== 'completed' && (
-                      <div className="flex flex-wrap gap-1">
-                        {ADD_ON_OPTIONS.map(opt => (
-                          <Button 
-                            key={opt.name}
-                            variant="outline" 
-                            className="h-6 text-[9px] px-2 border-dashed rounded-full"
-                            onClick={() => addExtraService(booking, opt)}
-                            disabled={updatingId === booking.id}
-                          >
-                            + {opt.name}
-                          </Button>
-                        ))}
-                      </div>
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    <div className="flex items-center gap-1">
+            {bookings.map(booking => (
+              <TableRow key={booking.id}>
+                <TableCell>
+                  <div className="font-bold">{booking.service}</div>
+                  <div className="text-xs text-muted-foreground">{booking.name} • {booking.duration || 60}m</div>
+                </TableCell>
+                <TableCell>
+                  <div className="text-sm font-medium">{booking.date ? format(parseISO(`${booking.date}T00:00:00`), 'MMM dd') : 'N/A'}</div>
+                  <div className="text-xs text-muted-foreground">{booking.time}</div>
+                </TableCell>
+                <TableCell className="max-w-[280px]">
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {booking.add_ons?.map((ao: any, i: number) => (
+                      <Badge key={i} variant="secondary" className="pl-2 pr-1 flex items-center gap-1 group">
+                        {ao.name}
+                        <button onClick={() => deleteAddOn(booking, i)} className="hover:text-red-500"><X className="h-3 w-3" /></button>
+                      </Badge>
+                    ))}
+                  </div>
+                  <div className="flex flex-wrap gap-1">
+                    {ADD_ON_OPTIONS.map(opt => (
+                      <Button key={opt.name} variant="outline" className="h-6 text-[9px] px-2 border-dashed rounded-full" onClick={() => addExtraService(booking, opt)} disabled={updatingId === booking.id}>
+                        + {opt.name}
+                      </Button>
+                    ))}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <div className="flex items-center gap-1 mr-2">
                       <span className="font-bold text-green-600">₱</span>
-                      <Input 
-                        type="number"
-                        value={earningsInputs[booking.id] || ''}
-                        onChange={(e) => setEarningsInputs({...earningsInputs, [booking.id]: Number(e.target.value)})}
-                        className="w-24 h-8 font-bold text-green-700"
-                      />
+                      <Input type="number" value={earningsInputs[booking.id] || ''} onChange={(e) => setEarningsInputs({...earningsInputs, [booking.id]: Number(e.target.value)})} className="w-20 h-8 font-bold text-right" />
                     </div>
-                  </TableCell>
-
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
-                      {booking.status === 'pending' && (
-                        <>
-                          <Button size="sm" onClick={() => updateStatus(booking.id, 'approved')} disabled={updatingId === booking.id}>Approve</Button>
-                          <Button size="sm" variant="destructive" onClick={() => updateStatus(booking.id, 'rejected')} disabled={updatingId === booking.id}>Reject</Button>
-                        </>
-                      )}
-                      {booking.status === 'approved' && (
-                        <Button 
-                          size="sm" 
-                          className="bg-green-600 hover:bg-green-700 h-8"
-                          onClick={() => completeBooking(booking.id)}
-                          disabled={updatingId === booking.id}
-                        >
-                          {updatingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete'}
-                        </Button>
-                      )}
-                      {booking.status === 'completed' && <Badge className="bg-blue-100 text-blue-700 border-none">Finalized</Badge>}
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
+                    {booking.status === 'pending' && (
+                      <>
+                        <Button size="sm" onClick={() => updateStatus(booking.id, 'approved')}>Approve</Button>
+                        <Button size="sm" variant="destructive" onClick={() => updateStatus(booking.id, 'rejected')}>Reject</Button>
+                      </>
+                    )}
+                    {booking.status === 'approved' && (
+                      <Button size="sm" className="bg-green-600 hover:bg-green-700" onClick={() => completeBooking(booking.id)} disabled={updatingId === booking.id}>
+                        {updatingId === booking.id ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Complete'}
+                      </Button>
+                    )}
+                    {booking.status === 'completed' && <Badge className="bg-blue-100 text-blue-700">Finalized</Badge>}
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
           </TableBody>
         </Table>
       </div>
 
-      {/* Add Service Dialog */}
       <Dialog open={showAddService} onOpenChange={setShowAddService}>
         <DialogContent>
           <DialogHeader><DialogTitle>Add New Service</DialogTitle></DialogHeader>
           <div className="space-y-4 py-2">
-            <div className="space-y
+            <div className="space-y-2">
+              <Label>Service Name</Label>
+              <Input placeholder="e.g. Swedish Massage" value={newService.name} onChange={(e) => setNewService({...newService, name: e.target.value})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Base Price (PHP)</Label>
+              <Input type="number" value={newService.defaultEarnings || ''} onChange={(e) => setNewService({...newService, defaultEarnings: Number(e.target.value)})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Description</Label>
+              <Input placeholder="Short description..." value={newService.description} onChange={(e) => setNewService({...newService, description: e.target.value})} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddService(false)}>Cancel</Button>
+            <Button onClick={handleAddNewService} disabled={isAddingService}>{isAddingService ? 'Saving...' : 'Save'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
