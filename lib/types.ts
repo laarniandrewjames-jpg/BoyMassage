@@ -1,5 +1,3 @@
-'use client'
-
 // --- Service & Add-On Types ---
 
 export type ServiceType = 
@@ -13,23 +11,14 @@ export type AddOnType =
   | 'Hot Stone'
   | 'Ventusa'
   | 'Fire Massage'
-  | 'Foot Scrub' // Added to match previous UI requests
   | 'None'
 
-// ✅ Booking Statuses (Includes Cancelled)
 export type BookingStatus = 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled'
 export type UserRole = 'admin' | 'client'
 
-// --- Preference Specific Types ---
 export type PressurePreference = 'no-preference' | 'soft' | 'medium' | 'hard'
 export type FocusArea = 'full-body' | 'upper-body' | 'lower-body' | 'other'
 export type AdditionalNeeds = 'none' | 'oil-allergy' | 'injuries' | 'quiet-session' | 'other'
-
-export interface AddOn {
-  name: AddOnType
-  price: number
-  duration_minutes: number
-}
 
 export interface User {
   id: string
@@ -50,7 +39,9 @@ export interface Booking {
   time: string
   duration: number
   extra_minutes: number
-  add_ons: AddOn[]
+  // ✅ Added these to match your new form submission and Admin UI
+  add_on_service: AddOnType 
+  add_on_price: number
   total_price: number
   pressure_preference: PressurePreference
   focus_area: FocusArea
@@ -96,10 +87,9 @@ export const SERVICES: { value: ServiceType; label: string; description: string;
 export const ADD_ONS: { value: AddOnType; label: string; description: string; price: number; duration: number }[] = [
   { value: 'None', label: 'No Add-On', description: 'No additional service', price: 0, duration: 0 },
   { value: 'Ear Candling', label: 'Ear Candling', description: 'Holistic ear cleansing therapy', price: 150, duration: 15 },
-  { value: 'Hot Stone', label: 'Hot Stone Massage', description: 'Heated stones for deep muscle relief', price: 350, duration: 15 },
-  { value: 'Ventusa', label: 'Ventusa Therapy', description: 'Cupping-based massage technique', price: 200, duration: 15 },
-  { value: 'Fire Massage', label: 'Fire Massage', description: 'Warm herbal compresses with gentle heat', price: 400, duration: 15 },
-  { value: 'Foot Scrub', label: 'Foot Scrub', description: 'Exfoliating treatment for feet', price: 250, duration: 15 }
+  { value: 'Hot Stone', label: 'Hot Stone Massage', description: 'Heated stones for deep muscle relief', price: 150, duration: 15 },
+  { value: 'Ventusa', label: 'Ventusa Therapy', description: 'Cupping-based massage technique', price: 150, duration: 15 },
+  { value: 'Fire Massage', label: 'Fire Massage', description: 'Warm herbal compresses with gentle heat', price: 150, duration: 15 },
 ]
 
 export const DURATIONS = [
