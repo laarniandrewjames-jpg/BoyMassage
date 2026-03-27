@@ -75,7 +75,7 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
     router.refresh()
   }
 
-  // ✅ FIXED: Save to extra_minutes field instead of duration
+  // ✅ FIXED: Save to extra_minutes field and proper add_ons
   async function handleComplete(id: string, earnings: number, bookingData?: any) {
     const bookingToUpdate = localBookings.find(b => b.id === id)
     
@@ -91,12 +91,11 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
     )
     
     try {
-      // ✅ Key fix: Save to extra_minutes, NOT duration
       await supabase.from('bookings').update({ 
         status: 'completed', 
         earnings,
         add_ons: bookingData?.add_ons || bookingToUpdate?.add_ons || [],
-        extra_minutes: bookingData?.extra_minutes || 0, // ✅ Save to extra_minutes
+        extra_minutes: bookingData?.extra_minutes || 0,
         total_price: bookingData?.total_price || bookingToUpdate?.total_price
       }).eq('id', id)
       
@@ -143,8 +142,68 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
       
       <main className="flex-1 py-8 px-4">
         <div className="container mx-auto max-w-6xl">
-          {/* Dashboard Header */}
-          {/* ... header and stats cards remain unchanged ... */}
+          {/* Dashboard Stats Header */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+            {/* Pending Bookings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Pending</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{pendingCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-amber-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Approved Bookings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{approvedCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-emerald-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Completed Sessions */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Completed</p>
+                    <p className="text-2xl font-bold text-slate-900 mt-1">{completedCount}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-blue-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Monthly Earnings */}
+            <Card className="bg-white shadow-sm ring-1 ring-slate-100 rounded-2xl">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">{monthLabel}</p>
+                    <p className="text-xl font-bold text-slate-900 mt-1">{formatPHP(monthlyEarnings)}</p>
+                  </div>
+                  <div className="w-10 h-10 rounded-full bg-green-100 flex items-center justify-center">
+                    <DollarSign className="w-5 h-5 text-green-600" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
           {/* Main Content Tabs */}
           <Tabs defaultValue="bookings" value={activeTab} onValueChange={setActiveTab} className="mb-8">
@@ -169,13 +228,13 @@ export function AdminDashboard({ bookings, users }: AdminDashboardProps) {
 
             {/* Bookings Tab Content */}
             <TabsContent value="bookings" className="space-y-4">
-              <div className="flex justify-between items-center mb-4">
+              <div className="flex flex-col md:flex-row justify-between gap-4 mb-4">
                 <h3 className="text-lg font-semibold">Bookings {bookingFilter !== 'all' ? `(${bookingFilter})` : ''}</h3>
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('all')}>All</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('pending')}>Pending</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('approved')}>Approved</Button>
-                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('completed')}>Completed</Button>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('all')} className={bookingFilter === 'all' ? 'bg-slate-100' : ''}>All</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('pending')} className={bookingFilter === 'pending' ? 'bg-amber-100' : ''}>Pending</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('approved')} className={bookingFilter === 'approved' ? 'bg-emerald-100' : ''}>Approved</Button>
+                  <Button variant="outline" size="sm" onClick={() => handleFilterClick('completed')} className={bookingFilter === 'completed' ? 'bg-blue-100' : ''}>Completed</Button>
                 </div>
               </div>
               <BookingsTable
