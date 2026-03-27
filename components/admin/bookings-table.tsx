@@ -202,8 +202,8 @@ export function BookingsTable({
                   </div>
                 </div>
 
-                {/* ✅ Client Rating Section - FIXED */}
-                {booking.status === 'completed' && booking.rating && (
+                {/* ✅ Client Rating Section - SHOWS WHEN: booking.status === 'completed' AND booking.rating exists */}
+                {booking.status === 'completed' && booking.rating ? (
                   <div className="space-y-2">
                     <div className="flex items-center gap-1.5 px-1">
                       <Star className="h-3 w-3 text-amber-500" />
@@ -232,7 +232,7 @@ export function BookingsTable({
                       )}
                     </div>
                   </div>
-                )}
+                ) : null}
 
                 {/* Manage Session Dropdowns */}
                 {status === 'approved' && (
